@@ -83,24 +83,73 @@ Use your dataset of interest to make a map involving polygons.  Or if you prefer
 On the web site [sites.wustl.edu/acag/datasets/surface-pm2-5/#V6.GL.02.04](https://sites.wustl.edu/acag/datasets/surface-pm2-5/#V6.GL.02.04) there are images of particulate matter concentrations worldwide.  I downloaded the 2020 global image from [wustl.app.box.com/s/y143mciw7jz7ft2qe3hccjw65m3xe8f2/folder/327753085334](https://wustl.app.box.com/s/y143mciw7jz7ft2qe3hccjw65m3xe8f2/folder/327753085334), saved it in my Downloads folder and 
 
 ```{r data}
-x= rast("~/Downloads/V6GL02.04.CNNPM25.GL.202001-202012.nc")
-brazil = project(
-	geodata::gadm("BRA", level=1, path="~/Downloads"),
-	crs(x))
-xCrop = crop(x, ext(brazil))
+x <- rast("data/V6GL02.04.CNNPM25.GL.202001-202012.nc")
+
+brazil <- project(geodata::gadm("BRA", level = 1, path = "data"), crs(x))
+# brazil_lim <- project(geodata::gadm("BRA", level = 0, path = "data"), crs(x))
+brazil_lim <- geobr::read_country(simplified = TRUE) |> 
+  sf::st_transform(crs(x))
+
+
+plot(brazil_lim)
+
+xCrop <- crop(x, brazil_lim, mask=TRUE)
 xCrop[xCrop<= 0] <- NA
 
-myCol = mapmisc::colourScale(xCrop, breaks=9, style='equal', col='RdYlGn', rev=TRUE, transform='sqrt',dec=0)
+plot(xCrop)
+
+myCol = mapmisc::colourScale(
+  xCrop,
+  breaks = 5,
+  style = 'equal',
+  col = 'RdYlGn',
+  rev = TRUE,
+  transform = 'sqrt',
+  dec = 0
+)
 
 map.new(xCrop)
-plot(xCrop, col=myCol$col, breaks=myCol$breaks, legend=FALSE, add=TRUE)
-plot(brazil, add=TRUE, border='red')
+plot(
+  xCrop,
+  col = myCol$col,
+  breaks = myCol$breaks,
+  legend = FALSE,
+  add = TRUE
+)
+plot(brazil, add = TRUE, border = 'white')
+plot(brazil_lim, add = TRUE, border = 'black')
 legendBreaks('bottomright', myCol)
 ```
 
 - Find the average PM by municipality in Brazil.  How does Rio rank?
 - Look at the help files for geodata::world.  Use it to create a similar map of all south america.
 
+```{r}
+brazil_mun <- geobr::read_municipality() |> sf::st_transform(crs(x))
+
+brazil_mun_avg <- extract(xCrop, brazil_mun, fun = mean, na.rm = TRUE)
+
+brazil_mun <- brazil_mun |> 
+  dplyr::mutate(
+    mean_PM = brazil_mun_avg[,2],
+    rank = rank(-mean_PM, na.last = "keep")
+  )
+
+ggplot() +
+  geom_sf(data = brazil_mun, aes(fill = mean_PM), color = "transparent") +
+  scale_fill_viridis_c() +
+  theme_minimal() +
+  labs(title = "Average PM2.5 by Municipality in Brazil",
+       fill = "PM2.5 (µg/m³)") +
+  theme(legend.position = "bottom")
+
+# How does Rio rank?
+brazil_mun |> 
+  dplyr::filter(name_muni == "Rio De Janeiro") |>
+  dplyr::pull(rank)
+
+
+```
 
 # Mapping a raster
 
