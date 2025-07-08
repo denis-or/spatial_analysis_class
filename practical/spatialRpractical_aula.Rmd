@@ -4,12 +4,13 @@ title: day 1 practical session, spatial data in R
 
 You'll need the new version of the mapmisc package
 ```{r installMapmics}
-install.packages("mapmisc", 
-	repos="http://r-forge.r-project.org")
+# install.packages("mapmisc", 
+# 	repos="http://r-forge.r-project.org")
 ```
 
 ```{r packages}
 library('mapmisc')
+library(tidyverse)
 ```
 
 # A nice map
@@ -32,8 +33,6 @@ patrick |> sf::st_as_sf() |> ggplot() + geom_sf()
 
 patrick_proj <- project(patrick, "EPSG:31983")
 
-
-
 theMap <- openmap(
   x = patrick_proj,
   # path = "cartodb",
@@ -51,7 +50,12 @@ plot(
 )
 mapmisc::scaleBar(crs(patrick_proj), "topleft", bg = "white")
 
-forInset <- openmap(patrick_proj, buffer = 50 * 50)
+forInset <- openmap(patrick_proj, 
+  buffer=50*1000
+)
+
+# map.new(forInset)
+# plot(forInset, add = TRUE)
 mapmisc::insetMap(
   crs = crs(patrick_proj),
   pos = "topright",
